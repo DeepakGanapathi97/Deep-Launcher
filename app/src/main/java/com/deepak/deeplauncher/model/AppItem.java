@@ -7,12 +7,14 @@ public class AppItem {
     private final String packageName;
     private final String activityName;
     private final Drawable iconOrBanner;
+    private final boolean hasBanner;
 
-    public AppItem(String label, String packageName, String activityName, Drawable iconOrBanner) {
+    public AppItem(String label, String packageName, String activityName, Drawable iconOrBanner, boolean hasBanner) {
         this.label = label;
         this.packageName = packageName;
         this.activityName = activityName;
         this.iconOrBanner = iconOrBanner;
+        this.hasBanner = hasBanner;
     }
 
     public String getLabel() {
@@ -29,5 +31,9 @@ public class AppItem {
 
     public Drawable getIconOrBanner() {
         return iconOrBanner;
+    }
+
+    public boolean hasBanner() {
+        return hasBanner;
     }
 }

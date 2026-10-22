@@ -98,6 +98,7 @@ public class DeepAccessibilityService extends AccessibilityService {
         try {
             // Check SmartTube first if user installed it, otherwise official YouTube TV
             String[] targetPackages = new String[]{
+                    "org.smarttube.stable",
                     "com.teamsmart.videomanager.tv",
                     "com.liskovsoft.videomanager",
                     "com.google.android.youtube.tv"

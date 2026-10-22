@@ -46,14 +46,21 @@ public class TvInputAdapter extends RecyclerView.Adapter<TvInputAdapter.InputVie
         TvInputItem item = inputList.get(position);
         holder.txtInputName.setText(item.getLabel());
 
-        // TV D-pad focus scaling
+        // TV D-pad focus scaling with 3D elevation
         holder.itemView.setOnFocusChangeListener((v, hasFocus) -> {
             float scale = hasFocus ? 1.08f : 1.0f;
+            float elev = hasFocus ? 16f : 0f;
             v.animate()
                     .scaleX(scale)
                     .scaleY(scale)
+                    .translationZ(elev)
                     .setDuration(120)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator())
                     .start();
+
+            holder.viewBorderHighlight.setBackgroundResource(
+                    hasFocus ? R.drawable.bg_card_focused : R.drawable.bg_card_normal
+            );
         });
 
         // Switch to HDMI/AV Input
@@ -75,10 +82,12 @@ public class TvInputAdapter extends RecyclerView.Adapter<TvInputAdapter.InputVie
 
     static class InputViewHolder extends RecyclerView.ViewHolder {
         final TextView txtInputName;
+        final View viewBorderHighlight;
 
         InputViewHolder(@NonNull View itemView) {
             super(itemView);
             txtInputName = itemView.findViewById(R.id.txtInputName);
+            viewBorderHighlight = itemView.findViewById(R.id.viewBorderHighlight);
         }
     }
 }

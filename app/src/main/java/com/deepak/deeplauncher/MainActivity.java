@@ -49,6 +49,7 @@ public class MainActivity extends Activity implements PackageReceiver.PackageCha
     private LinearLayout layoutInputsContainer;
     private TextView tvClock;
     private TextView tvWeather;
+    private TextView tvReorderHint;
     private FrameLayout btnSettings;
 
     private AppAdapter appAdapter;
@@ -85,13 +86,15 @@ public class MainActivity extends Activity implements PackageReceiver.PackageCha
         layoutInputsContainer = findViewById(R.id.layoutInputsContainer);
         tvClock = findViewById(R.id.tvClock);
         tvWeather = findViewById(R.id.tvWeather);
+        tvReorderHint = findViewById(R.id.tvReorderHint);
         btnSettings = findViewById(R.id.btnSettings);
 
         weatherHelper = new WeatherHelper(this);
 
         btnSettings.setOnFocusChangeListener((v, hasFocus) -> {
             float scale = hasFocus ? 1.15f : 1.0f;
-            v.animate().scaleX(scale).scaleY(scale).setDuration(120).start();
+            float elev = hasFocus ? 16f : 0f;
+            v.animate().scaleX(scale).scaleY(scale).translationZ(elev).setDuration(120).start();
         });
 
         btnSettings.setOnClickListener(v -> {
@@ -108,7 +111,11 @@ public class MainActivity extends Activity implements PackageReceiver.PackageCha
     private void setupRecyclerViews() {
         LinearLayoutManager appsLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false);
         recyclerApps.setLayoutManager(appsLayoutManager);
-        appAdapter = new AppAdapter(this);
+        appAdapter = new AppAdapter(this, isReordering -> {
+            if (tvReorderHint != null) {
+                tvReorderHint.setVisibility(isReordering ? View.VISIBLE : View.GONE);
+            }
+        });
         recyclerApps.setAdapter(appAdapter);
 
         LinearLayoutManager inputsLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false);
@@ -156,7 +163,45 @@ public class MainActivity extends Activity implements PackageReceiver.PackageCha
     }
 
     @Override
+    public boolean dispatchKeyEvent(android.view.KeyEvent event) {
+        if (event.getAction() == android.view.KeyEvent.ACTION_DOWN) {
+            int keyCode = event.getKeyCode();
+
+            if (keyCode == android.view.KeyEvent.KEYCODE_MENU) {
+                if (appAdapter != null) {
+                    if (appAdapter.isReordering()) {
+                        appAdapter.exitReorderMode();
+                    } else {
+                        appAdapter.enterReorderModeForCurrentFocus();
+                    }
+                    return true;
+                }
+            }
+
+            if (appAdapter != null && appAdapter.isReordering()) {
+                if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT) {
+                    appAdapter.moveCurrentItemLeft();
+                    return true;
+                } else if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    appAdapter.moveCurrentItemRight();
+                    return true;
+                } else if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER
+                        || keyCode == android.view.KeyEvent.KEYCODE_ENTER
+                        || keyCode == android.view.KeyEvent.KEYCODE_BACK) {
+                    appAdapter.exitReorderMode();
+                    return true;
+                }
+            }
+        }
+        return super.dispatchKeyEvent(event);
+    }
+
+    @Override
     public void onBackPressed() {
+        if (appAdapter != null && appAdapter.isReordering()) {
+            appAdapter.exitReorderMode();
+            return;
+        }
         // As a Home launcher, back button focuses the first app tile
         focusFirstApp();
     }
@@ -183,60 +228,74 @@ public class MainActivity extends Activity implements PackageReceiver.PackageCha
             Set<String> seenPackages = new HashSet<>();
             List<AppItem> items = new ArrayList<>();
 
-            // Exclude self and known system overlays
+            // Exclude self and secondary launchers (Projectivy) so only content apps show
             String myPkg = getPackageName();
+            seenPackages.add(myPkg);
+            seenPackages.add("com.spocky.projengmenu");
+            seenPackages.add("com.google.android.tvlauncher");
 
             // Process Leanback apps
             for (ResolveInfo info : rawApps) {
                 if (info.activityInfo == null) continue;
                 String pkg = info.activityInfo.packageName;
-                if (pkg.equals(myPkg) || seenPackages.contains(pkg)) continue;
+                if (seenPackages.contains(pkg)) continue;
 
                 seenPackages.add(pkg);
                 String label = info.loadLabel(pm).toString();
                 Drawable banner = info.activityInfo.loadBanner(pm);
-                if (banner == null) {
-                    banner = info.activityInfo.loadIcon(pm);
-                }
-                items.add(new AppItem(label, pkg, info.activityInfo.name, banner));
+                boolean hasBanner = (banner != null);
+                Drawable displayDrawable = hasBanner ? banner : info.activityInfo.loadIcon(pm);
+                items.add(new AppItem(label, pkg, info.activityInfo.name, displayDrawable, hasBanner));
             }
 
             // Process non-Leanback sideloaded apps
             for (ResolveInfo info : standardApps) {
                 if (info.activityInfo == null) continue;
                 String pkg = info.activityInfo.packageName;
-                if (pkg.equals(myPkg) || seenPackages.contains(pkg)) continue;
+                if (seenPackages.contains(pkg)) continue;
 
                 seenPackages.add(pkg);
                 String label = info.loadLabel(pm).toString();
-                Drawable icon = info.activityInfo.loadBanner(pm);
-                if (icon == null) {
-                    icon = info.activityInfo.loadIcon(pm);
-                }
-                items.add(new AppItem(label, pkg, info.activityInfo.name, icon));
+                Drawable banner = info.activityInfo.loadBanner(pm);
+                boolean hasBanner = (banner != null);
+                Drawable displayDrawable = hasBanner ? banner : info.activityInfo.loadIcon(pm);
+                items.add(new AppItem(label, pkg, info.activityInfo.name, displayDrawable, hasBanner));
             }
 
-            // Prioritize primary streaming apps (YouTube, Hotstar, Prime) first, then alphabetical
-            List<String> priorityPackages = Arrays.asList(
-                    "com.google.android.youtube.tv",
-                    "com.teamsmart.videomanager.tv",
-                    "com.liskovsoft.videomanager",
-                    "in.startv.hotstar",
-                    "com.amazon.amazonvideo.livingroom"
-            );
+            // Check if user has saved a custom app order
+            android.content.SharedPreferences prefs = getSharedPreferences("deep_launcher_prefs", Context.MODE_PRIVATE);
+            String savedOrderStr = prefs.getString("ordered_packages", null);
 
-            items.sort((a, b) -> {
-                int idxA = priorityPackages.indexOf(a.getPackageName());
-                int idxB = priorityPackages.indexOf(b.getPackageName());
-                if (idxA != -1 && idxB != -1) {
-                    return Integer.compare(idxA, idxB);
-                } else if (idxA != -1) {
-                    return -1;
-                } else if (idxB != -1) {
-                    return 1;
-                }
-                return a.getLabel().compareToIgnoreCase(b.getLabel());
-            });
+            if (savedOrderStr != null && !savedOrderStr.isEmpty()) {
+                List<String> savedOrder = Arrays.asList(savedOrderStr.split(","));
+                items.sort(Comparator.comparingInt(a -> {
+                    int idx = savedOrder.indexOf(a.getPackageName());
+                    return idx != -1 ? idx : 999;
+                }));
+            } else {
+                // Default Priority: SmartTube, YouTube, Hotstar, Prime Video, then alphabetical
+                List<String> priorityPackages = Arrays.asList(
+                        "org.smarttube.stable",
+                        "com.google.android.youtube.tv",
+                        "com.teamsmart.videomanager.tv",
+                        "com.liskovsoft.videomanager",
+                        "in.startv.hotstar",
+                        "com.amazon.amazonvideo.livingroom"
+                );
+
+                items.sort((a, b) -> {
+                    int idxA = priorityPackages.indexOf(a.getPackageName());
+                    int idxB = priorityPackages.indexOf(b.getPackageName());
+                    if (idxA != -1 && idxB != -1) {
+                        return Integer.compare(idxA, idxB);
+                    } else if (idxA != -1) {
+                        return -1;
+                    } else if (idxB != -1) {
+                        return 1;
+                    }
+                    return a.getLabel().compareToIgnoreCase(b.getLabel());
+                });
+            }
 
             // Load TV Inputs (HDMI 1, HDMI 2, AV, etc.)
             List<TvInputItem> inputs = TvInputHelper.loadPassthroughInputs(MainActivity.this);
