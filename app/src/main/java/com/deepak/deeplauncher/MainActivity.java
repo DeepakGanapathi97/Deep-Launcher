@@ -27,9 +27,11 @@ import com.deepak.deeplauncher.model.AppItem;
 import com.deepak.deeplauncher.model.TvInputItem;
 import com.deepak.deeplauncher.receiver.PackageReceiver;
 import com.deepak.deeplauncher.util.TvInputHelper;
+import com.deepak.deeplauncher.util.WeatherHelper;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
@@ -46,10 +48,12 @@ public class MainActivity extends Activity implements PackageReceiver.PackageCha
     private RecyclerView recyclerInputs;
     private LinearLayout layoutInputsContainer;
     private TextView tvClock;
+    private TextView tvWeather;
     private FrameLayout btnSettings;
 
     private AppAdapter appAdapter;
     private TvInputAdapter tvInputAdapter;
+    private WeatherHelper weatherHelper;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -80,7 +84,10 @@ public class MainActivity extends Activity implements PackageReceiver.PackageCha
         recyclerInputs = findViewById(R.id.recyclerInputs);
         layoutInputsContainer = findViewById(R.id.layoutInputsContainer);
         tvClock = findViewById(R.id.tvClock);
+        tvWeather = findViewById(R.id.tvWeather);
         btnSettings = findViewById(R.id.btnSettings);
+
+        weatherHelper = new WeatherHelper(this);
 
         btnSettings.setOnFocusChangeListener((v, hasFocus) -> {
             float scale = hasFocus ? 1.15f : 1.0f;
@@ -121,6 +128,15 @@ public class MainActivity extends Activity implements PackageReceiver.PackageCha
         registerReceiver(timeTickReceiver, new IntentFilter(Intent.ACTION_TIME_TICK));
         updateClock();
         loadAppsAndInputs();
+
+        if (weatherHelper != null && tvWeather != null) {
+            weatherHelper.fetchWeather(weatherText -> {
+                if (weatherText != null && !weatherText.isEmpty()) {
+                    tvWeather.setText(weatherText);
+                    tvWeather.setVisibility(View.VISIBLE);
+                }
+            });
+        }
     }
 
     @Override
@@ -200,8 +216,27 @@ public class MainActivity extends Activity implements PackageReceiver.PackageCha
                 items.add(new AppItem(label, pkg, info.activityInfo.name, icon));
             }
 
-            // Sort alphabetically for fast predictable access
-            Collections.sort(items, Comparator.comparing(a -> a.getLabel().toLowerCase()));
+            // Prioritize primary streaming apps (YouTube, Hotstar, Prime) first, then alphabetical
+            List<String> priorityPackages = Arrays.asList(
+                    "com.google.android.youtube.tv",
+                    "com.teamsmart.videomanager.tv",
+                    "com.liskovsoft.videomanager",
+                    "in.startv.hotstar",
+                    "com.amazon.amazonvideo.livingroom"
+            );
+
+            items.sort((a, b) -> {
+                int idxA = priorityPackages.indexOf(a.getPackageName());
+                int idxB = priorityPackages.indexOf(b.getPackageName());
+                if (idxA != -1 && idxB != -1) {
+                    return Integer.compare(idxA, idxB);
+                } else if (idxA != -1) {
+                    return -1;
+                } else if (idxB != -1) {
+                    return 1;
+                }
+                return a.getLabel().compareToIgnoreCase(b.getLabel());
+            });
 
             // Load TV Inputs (HDMI 1, HDMI 2, AV, etc.)
             List<TvInputItem> inputs = TvInputHelper.loadPassthroughInputs(MainActivity.this);

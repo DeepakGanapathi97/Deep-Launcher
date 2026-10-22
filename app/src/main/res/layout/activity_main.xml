@@ -9,7 +9,7 @@
     android:paddingEnd="48dp"
     android:paddingBottom="24dp">
 
-    <!-- Header: Launcher Title + Clock + Settings -->
+    <!-- Header: Launcher Title + Weather + Clock + Settings -->
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -35,12 +35,23 @@
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
+            <!-- Weather Widget (Subtle temperature & condition) -->
+            <TextView
+                android:id="@+id/tvWeather"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="18dp"
+                android:textColor="@color/text_secondary"
+                android:textSize="15sp"
+                android:visibility="gone" />
+
+            <!-- Digital Clock -->
             <TextView
                 android:id="@+id/tvClock"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="20dp"
-                android:textColor="@color/text_secondary"
+                android:textColor="@color/text_primary"
                 android:textSize="18sp"
                 android:textStyle="bold" />
 
