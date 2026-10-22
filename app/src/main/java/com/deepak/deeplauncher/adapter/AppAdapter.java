@@ -188,11 +188,20 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.AppViewHolder> {
     }
 
     public void enterReorderMode(int pos) {
+        if (isReordering) return;
         isReordering = true;
         reorderingPosition = pos;
         notifyItemChanged(pos);
         if (reorderListener != null) {
             reorderListener.onReorderStateChanged(true);
+        }
+        if (attachedRecyclerView != null) {
+            attachedRecyclerView.post(() -> {
+                RecyclerView.ViewHolder vh = attachedRecyclerView.findViewHolderForAdapterPosition(pos);
+                if (vh != null) {
+                    vh.itemView.requestFocus();
+                }
+            });
         }
         Toast.makeText(context, "Move Mode: Press ◀ / ▶ to move. Press OK to save.", Toast.LENGTH_SHORT).show();
     }
@@ -212,18 +221,18 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.AppViewHolder> {
     public void exitReorderMode() {
         if (!isReordering) return;
         isReordering = false;
-        int oldPos = reorderingPosition;
+        int finalPos = reorderingPosition;
         reorderingPosition = -1;
-        if (oldPos != -1) {
-            notifyItemChanged(oldPos);
+        if (finalPos != -1) {
+            notifyItemChanged(finalPos);
         }
+        saveAppOrder();
         if (reorderListener != null) {
             reorderListener.onReorderStateChanged(false);
         }
-        saveAppOrder();
-        if (attachedRecyclerView != null && oldPos != -1) {
+        if (attachedRecyclerView != null && finalPos != -1) {
             attachedRecyclerView.post(() -> {
-                RecyclerView.ViewHolder vh = attachedRecyclerView.findViewHolderForAdapterPosition(oldPos);
+                RecyclerView.ViewHolder vh = attachedRecyclerView.findViewHolderForAdapterPosition(finalPos);
                 if (vh != null) {
                     vh.itemView.requestFocus();
                 }
@@ -237,16 +246,18 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.AppViewHolder> {
     }
 
     public void moveCurrentItemLeft() {
+        if (!isReordering) return;
         if (reorderingPosition > 0) {
             int from = reorderingPosition;
             int to = reorderingPosition - 1;
             Collections.swap(appList, from, to);
             reorderingPosition = to;
             notifyItemMoved(from, to);
+            notifyItemChanged(from);
+            notifyItemChanged(to);
             saveAppOrder();
 
             if (attachedRecyclerView != null) {
-                attachedRecyclerView.smoothScrollToPosition(to);
                 attachedRecyclerView.post(() -> {
                     RecyclerView.ViewHolder vh = attachedRecyclerView.findViewHolderForAdapterPosition(to);
                     if (vh != null) {
@@ -258,16 +269,18 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.AppViewHolder> {
     }
 
     public void moveCurrentItemRight() {
+        if (!isReordering) return;
         if (reorderingPosition >= 0 && reorderingPosition < appList.size() - 1) {
             int from = reorderingPosition;
             int to = reorderingPosition + 1;
             Collections.swap(appList, from, to);
             reorderingPosition = to;
             notifyItemMoved(from, to);
+            notifyItemChanged(from);
+            notifyItemChanged(to);
             saveAppOrder();
 
             if (attachedRecyclerView != null) {
-                attachedRecyclerView.smoothScrollToPosition(to);
                 attachedRecyclerView.post(() -> {
                     RecyclerView.ViewHolder vh = attachedRecyclerView.findViewHolderForAdapterPosition(to);
                     if (vh != null) {
@@ -278,13 +291,15 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.AppViewHolder> {
         }
     }
 
-    private void saveAppOrder() {
+    public void saveAppOrder() {
         List<String> pkgs = new ArrayList<>();
         for (AppItem item : appList) {
             pkgs.add(item.getPackageName());
         }
+        String orderString = TextUtils.join(",", pkgs);
         SharedPreferences prefs = context.getSharedPreferences("deep_launcher_prefs", Context.MODE_PRIVATE);
-        prefs.edit().putString("ordered_packages", TextUtils.join(",", pkgs)).apply();
+        boolean saved = prefs.edit().putString("ordered_packages", orderString).commit();
+        android.util.Log.d("DeepLauncher", "saveAppOrder committed: " + saved + " -> " + orderString);
     }
 
     private void launchApp(AppItem item) {

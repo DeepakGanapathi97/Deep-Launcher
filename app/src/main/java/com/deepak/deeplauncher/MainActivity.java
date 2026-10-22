@@ -63,6 +63,12 @@ public class MainActivity extends Activity implements PackageReceiver.PackageCha
     private FrameLayout btnTheme;
     private ImageView imgThemeIcon;
 
+    private Runnable longPressRunnable = null;
+    private boolean isDpadCenterDown = false;
+    private boolean longPressTriggered = false;
+    private boolean ignoreNextDpadCenterUp = false;
+    private long dpadCenterDownTime = 0;
+
     private AppAdapter appAdapter;
     private TvInputAdapter tvInputAdapter;
     private WeatherHelper weatherHelper;
@@ -261,22 +267,45 @@ public class MainActivity extends Activity implements PackageReceiver.PackageCha
     }
 
     @Override
-    public boolean dispatchKeyEvent(android.view.KeyEvent event) {
-        if (event.getAction() == android.view.KeyEvent.ACTION_DOWN) {
-            int keyCode = event.getKeyCode();
+    public boolean onKeyLongPress(int keyCode, android.view.KeyEvent event) {
+        if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER
+                || keyCode == android.view.KeyEvent.KEYCODE_ENTER
+                || keyCode == android.view.KeyEvent.KEYCODE_NUMPAD_ENTER) {
+            int pos = getFocusedAppPosition();
+            if (pos != -1 && appAdapter != null && !appAdapter.isReordering()) {
+                longPressTriggered = true;
+                appAdapter.enterReorderMode(pos);
+                return true;
+            }
+        }
+        return super.onKeyLongPress(keyCode, event);
+    }
 
-            if (keyCode == android.view.KeyEvent.KEYCODE_MENU) {
+    @Override
+    public boolean dispatchKeyEvent(android.view.KeyEvent event) {
+        int keyCode = event.getKeyCode();
+        int action = event.getAction();
+
+        // 1. Menu button: instant toggle for Reorder Mode
+        if (keyCode == android.view.KeyEvent.KEYCODE_MENU) {
+            if (action == android.view.KeyEvent.ACTION_DOWN) {
                 if (appAdapter != null) {
                     if (appAdapter.isReordering()) {
                         appAdapter.exitReorderMode();
                     } else {
-                        appAdapter.enterReorderModeForCurrentFocus();
+                        int pos = getFocusedAppPosition();
+                        if (pos != -1) {
+                            appAdapter.enterReorderMode(pos);
+                        }
                     }
-                    return true;
                 }
             }
+            return true;
+        }
 
-            if (appAdapter != null && appAdapter.isReordering()) {
+        // 2. When currently in Reorder Mode:
+        if (appAdapter != null && appAdapter.isReordering()) {
+            if (action == android.view.KeyEvent.ACTION_DOWN) {
                 if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT) {
                     appAdapter.moveCurrentItemLeft();
                     return true;
@@ -285,13 +314,127 @@ public class MainActivity extends Activity implements PackageReceiver.PackageCha
                     return true;
                 } else if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER
                         || keyCode == android.view.KeyEvent.KEYCODE_ENTER
+                        || keyCode == android.view.KeyEvent.KEYCODE_NUMPAD_ENTER
                         || keyCode == android.view.KeyEvent.KEYCODE_BACK) {
+                    ignoreNextDpadCenterUp = true;
                     appAdapter.exitReorderMode();
                     return true;
                 }
+            } else if (action == android.view.KeyEvent.ACTION_UP) {
+                if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER
+                        || keyCode == android.view.KeyEvent.KEYCODE_ENTER
+                        || keyCode == android.view.KeyEvent.KEYCODE_NUMPAD_ENTER) {
+                    if (ignoreNextDpadCenterUp) {
+                        ignoreNextDpadCenterUp = false;
+                        return true;
+                    }
+                }
+            }
+            // Consume vertical D-pad navigation so the user doesn't accidentally navigate away
+            if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_UP || keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN) {
+                return true;
+            }
+            return super.dispatchKeyEvent(event);
+        }
+
+        // 3. When NOT in Reorder Mode: Handle Long Press on OK / DPAD_CENTER / ENTER
+        if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER
+                || keyCode == android.view.KeyEvent.KEYCODE_ENTER
+                || keyCode == android.view.KeyEvent.KEYCODE_NUMPAD_ENTER) {
+
+            if (action == android.view.KeyEvent.ACTION_DOWN) {
+                int focusedPos = getFocusedAppPosition();
+
+                if (focusedPos != -1) {
+                    // Fast path 1: Event already carries FLAG_LONG_PRESS (from ADB or TV key repeat)
+                    if (event.isLongPress()) {
+                        longPressTriggered = true;
+                        appAdapter.enterReorderMode(focusedPos);
+                        return true;
+                    }
+
+                    if (!isDpadCenterDown) {
+                        isDpadCenterDown = true;
+                        longPressTriggered = false;
+                        dpadCenterDownTime = android.os.SystemClock.uptimeMillis();
+                        event.startTracking();
+
+                        if (longPressRunnable != null) {
+                            mainHandler.removeCallbacks(longPressRunnable);
+                        }
+                        longPressRunnable = () -> {
+                            if (isDpadCenterDown && appAdapter != null && !appAdapter.isReordering()) {
+                                int currentPos = getFocusedAppPosition();
+                                if (currentPos != -1) {
+                                    longPressTriggered = true;
+                                    appAdapter.enterReorderMode(currentPos);
+                                }
+                            }
+                        };
+                        mainHandler.postDelayed(longPressRunnable, 450);
+                    } else if (event.getRepeatCount() >= 1 && !longPressTriggered) {
+                        long heldDuration = android.os.SystemClock.uptimeMillis() - dpadCenterDownTime;
+                        if (heldDuration >= 350 || event.getRepeatCount() >= 2) {
+                            if (longPressRunnable != null) {
+                                mainHandler.removeCallbacks(longPressRunnable);
+                                longPressRunnable = null;
+                            }
+                            longPressTriggered = true;
+                            appAdapter.enterReorderMode(focusedPos);
+                            return true;
+                        }
+                    }
+                }
+            } else if (action == android.view.KeyEvent.ACTION_UP) {
+                isDpadCenterDown = false;
+                long heldDuration = android.os.SystemClock.uptimeMillis() - dpadCenterDownTime;
+
+                if (longPressRunnable != null) {
+                    mainHandler.removeCallbacks(longPressRunnable);
+                    longPressRunnable = null;
+                }
+                if (ignoreNextDpadCenterUp) {
+                    ignoreNextDpadCenterUp = false;
+                    return true;
+                }
+                if (longPressTriggered || event.isCanceled() || heldDuration >= 450) {
+                    longPressTriggered = false;
+                    return true; // Consume event to prevent click / launchApp
+                }
             }
         }
+
         return super.dispatchKeyEvent(event);
+    }
+
+    private int getFocusedAppPosition() {
+        if (recyclerApps == null || appAdapter == null) return -1;
+        View focused = recyclerApps.getFocusedChild();
+        if (focused != null) {
+            int pos = recyclerApps.getChildAdapterPosition(focused);
+            if (pos != RecyclerView.NO_POSITION) {
+                return pos;
+            }
+        }
+
+        View currentFocus = getCurrentFocus();
+        if (currentFocus != null) {
+            View parent = currentFocus;
+            while (parent != null && parent.getParent() != recyclerApps) {
+                if (parent.getParent() instanceof View) {
+                    parent = (View) parent.getParent();
+                } else {
+                    break;
+                }
+            }
+            if (parent != null && parent.getParent() == recyclerApps) {
+                int pos = recyclerApps.getChildAdapterPosition(parent);
+                if (pos != RecyclerView.NO_POSITION) {
+                    return pos;
+                }
+            }
+        }
+        return -1;
     }
 
     @Override
@@ -306,10 +449,16 @@ public class MainActivity extends Activity implements PackageReceiver.PackageCha
 
     @Override
     public void onPackagesChanged() {
+        if (appAdapter != null && appAdapter.isReordering()) {
+            return;
+        }
         loadAppsAndInputs();
     }
 
     private void loadAppsAndInputs() {
+        if (appAdapter != null && appAdapter.isReordering()) {
+            return;
+        }
         executor.execute(() -> {
             PackageManager pm = getPackageManager();
 
@@ -363,13 +512,22 @@ public class MainActivity extends Activity implements PackageReceiver.PackageCha
             // Check if user has saved a custom app order
             android.content.SharedPreferences prefs = getSharedPreferences("deep_launcher_prefs", Context.MODE_PRIVATE);
             String savedOrderStr = prefs.getString("ordered_packages", null);
+            android.util.Log.d("DeepLauncher", "loadAppsAndInputs savedOrder: " + savedOrderStr);
 
             if (savedOrderStr != null && !savedOrderStr.isEmpty()) {
                 List<String> savedOrder = Arrays.asList(savedOrderStr.split(","));
-                items.sort(Comparator.comparingInt(a -> {
-                    int idx = savedOrder.indexOf(a.getPackageName());
-                    return idx != -1 ? idx : 999;
-                }));
+                items.sort((a, b) -> {
+                    int idxA = savedOrder.indexOf(a.getPackageName());
+                    int idxB = savedOrder.indexOf(b.getPackageName());
+                    if (idxA != -1 && idxB != -1) {
+                        return Integer.compare(idxA, idxB);
+                    } else if (idxA != -1) {
+                        return -1;
+                    } else if (idxB != -1) {
+                        return 1;
+                    }
+                    return a.getLabel().compareToIgnoreCase(b.getLabel());
+                });
             } else {
                 // Default Priority: SmartTube, YouTube, Hotstar, Prime Video, then alphabetical
                 List<String> priorityPackages = Arrays.asList(
@@ -400,6 +558,9 @@ public class MainActivity extends Activity implements PackageReceiver.PackageCha
 
             // Post back to UI thread
             mainHandler.post(() -> {
+                if (appAdapter != null && appAdapter.isReordering()) {
+                    return;
+                }
                 appAdapter.setApps(items);
 
                 if (inputs.isEmpty()) {
