@@ -10,15 +10,24 @@ Deep Launcher strips away sponsored ads, heavy background telemetry, recommendat
 
 [![Platforms](https://img.shields.io/badge/Platforms-Android%20TV%20%E2%80%A2%20Google%20TV%20(Android%208.0%2B)-18181B?style=flat-square)](#downloads--installation)
 [![RAM Footprint](https://img.shields.io/badge/Active%20RAM-7.2%20MB-10B981?style=flat-square)](#performance-benchmark)
-[![APK Size](https://img.shields.io/badge/APK%20Size-219%20KB-38BDF8?style=flat-square)](#downloads--installation)
+[![APK Size](https://img.shields.io/badge/APK%20Size-275%20KB-38BDF8?style=flat-square)](#downloads--installation)
+[![Dynamic Themes](https://img.shields.io/badge/Theme-Daylight%20%E2%80%A2%20OLED%20Dark-A855F7?style=flat-square)](#dynamic-daylight--oled-dark-themes)
 [![Zero Ads](https://img.shields.io/badge/Ads%20%26%20Trackers-Zero%20(None)-F59E0B?style=flat-square)](#why-deep-launcher)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square)](LICENSE)
 
-[Downloads](#downloads--installation) • [Why Deep Launcher?](#why-deep-launcher) • [Performance Benchmark](#performance-benchmark) • [Key Features](#key-features) • [Hardware Remote Remapping](#hardware-remote-remapping) • [Building from Source](#building-from-source)
+[Downloads](#downloads--installation) • [Why Deep Launcher?](#why-deep-launcher) • [Dynamic Themes](#dynamic-daylight--oled-dark-themes) • [App Reordering](#app-reordering--tile-customization) • [Performance Benchmark](#performance-benchmark) • [Key Features](#key-features) • [Hardware Remote Remapping](#hardware-remote-remapping)
 
 <br/>
 
-<img src="assets/screenshot-main.png" alt="Deep Launcher Interface" width="850" />
+<img src="assets/screenshot-night.png" alt="Deep Launcher OLED Night Interface" width="850" />
+<br/>
+<em>OLED Pure Dark Mode (Default at Night: 6:00 PM – 6:00 AM)</em>
+
+<br/><br/>
+
+<img src="assets/screenshot-day.png" alt="Deep Launcher Daylight White Interface" width="850" />
+<br/>
+<em>Daylight White Mode (Automatic during Day: 6:00 AM – 6:00 PM)</em>
 
 </div>
 
@@ -62,8 +71,8 @@ Pre-compiled, standalone APKs are published with every release.
 
 | Platform | Download | Format | Description |
 | :--- | :--- | :--- | :--- |
-| **Android TV / Google TV** | [**`deep-launcher-v1.0.0.apk`**](https://github.com/DeepakGanapathi97/Deep-Launcher/releases/latest) | Standalone APK (219 KB) | Production release optimized with R8/Proguard |
-| **Debug Build** | [**`deep-launcher-v1.0.0-debug.apk`**](https://github.com/DeepakGanapathi97/Deep-Launcher/releases/latest) | Debug APK (1.5 MB) | Includes full debug logging and inspectable traces |
+| **Android TV / Google TV** | [**`deep-launcher-v1.0.2.apk`**](https://github.com/DeepakGanapathi97/Deep-Launcher/releases/latest) | Standalone APK (275 KB) | Production release optimized with R8/Proguard |
+| **Debug Build** | [**`deep-launcher-v1.0.2-debug.apk`**](https://github.com/DeepakGanapathi97/Deep-Launcher/releases/latest) | Debug APK (1.5 MB) | Includes full debug logging and inspectable traces |
 
 ### 1. Sideload via ADB (Recommended)
 Connect to your TV over Wi-Fi or USB:
@@ -85,12 +94,38 @@ adb shell cmd package set-home-activity com.deepak.deeplauncher/.MainActivity
 
 ---
 
+## Dynamic Daylight & OLED Dark Themes
+
+Deep Launcher introduces a smart, time-based adaptive theme engine:
+- **Daylight White (`#F3F4F8`):** Active automatically between **6:00 AM and 6:00 PM**, providing high legibility and crisp contrast in sunlit rooms.
+- **OLED Pure Dark (`#0A0A0C`):** Active automatically between **6:00 PM and 6:00 AM**, turning off OLED pixels to reduce eye strain and conserve panel energy.
+- **Header Theme Toggle Button (`🌓` / `☀️` / `🌙`):** Navigate up to the header button with your remote and click OK anytime to cycle between **Auto (Time-based)**, **Forced Daylight**, or **Forced OLED Dark**.
+
+---
+
+## App Reordering & Tile Customization
+
+Customize the home tile layout directly using your TV remote:
+
+<div align="center">
+<img src="assets/screenshot-reorder.png" alt="App Reorder Mode" width="700" />
+</div>
+
+1. Navigate to any app card in the top row.
+2. **Press the Menu button** (or long-press OK) on your remote to enter **Move Mode**.
+3. The tile will glow amber with a `◀ Move ▶` badge.
+4. Press **◀ Left** or **▶ Right** on your D-pad to slide the tile to your desired position.
+5. Press **OK** or **Back** to lock in and save your order permanently.
+
+---
+
 ## Key Features
 
-### 1. Apps Row (Prioritized & Auto-Focused)
+### 1. Apps Row (SmartTube & Official YouTube Coexistence)
 - Automatically queries both `CATEGORY_LEANBACK_LAUNCHER` and standard `CATEGORY_LAUNCHER` intents.
-- Intelligently pins primary streaming services (YouTube, Hotstar, Prime Video) to the front of the queue, followed by your installed apps in alphabetical order.
-- The first tile is auto-focused on launch, allowing instant playback with a single click.
+- Intelligently pins your preferred video platforms—both **SmartTube** (for zero ads and SponsorBlock) and official **YouTube**—side-by-side at the front of the queue, alongside **Disney+ Hotstar**, **Prime Video**, and **Google Play Store**.
+- Perfectly calibrated 134dp × 76dp cards allow all 6 primary apps to fit simultaneously on 720p/1080p screens with zero horizontal scrolling.
+- Hardware-accelerated 3D elevation (`translationZ`) prevents focused cards from jittering or overlapping neighboring cards.
 
 ### 2. Physical TV Inputs
 - Directly interfaces with Android's hardware `TvInputManager`.

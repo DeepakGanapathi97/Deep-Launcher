@@ -4,7 +4,7 @@
     android:id="@+id/cardAppRoot"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:layout_marginEnd="18dp"
+    android:layout_marginEnd="11dp"
     android:clipChildren="false"
     android:clipToPadding="false"
     android:clickable="true"
@@ -12,10 +12,10 @@
 
     <androidx.cardview.widget.CardView
         android:id="@+id/cardContainer"
-        android:layout_width="180dp"
-        android:layout_height="102dp"
+        android:layout_width="134dp"
+        android:layout_height="76dp"
         app:cardBackgroundColor="@color/bg_card"
-        app:cardCornerRadius="12dp"
+        app:cardCornerRadius="10dp"
         app:cardElevation="0dp">
 
         <!-- Banner View (for apps with 16:9 TV banners) -->
@@ -33,25 +33,25 @@
             android:layout_height="match_parent"
             android:gravity="center"
             android:orientation="vertical"
-            android:padding="8dp"
+            android:padding="6dp"
             android:visibility="gone">
 
             <ImageView
                 android:id="@+id/imgIcon"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
                 android:scaleType="fitCenter" />
 
             <TextView
                 android:id="@+id/txtAppName"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="4dp"
                 android:ellipsize="end"
                 android:gravity="center"
                 android:maxLines="1"
                 android:textColor="@color/text_primary"
-                android:textSize="12sp"
+                android:textSize="10.5sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
@@ -68,7 +68,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom|center_horizontal"
-            android:layout_marginBottom="6dp"
+            android:layout_marginBottom="4dp"
             android:background="@drawable/bg_reorder_badge"
             android:paddingStart="8dp"
             android:paddingTop="2dp"
@@ -76,7 +76,7 @@
             android:paddingBottom="2dp"
             android:text="◀ Move ▶"
             android:textColor="#FFFFFF"
-            android:textSize="11sp"
+            android:textSize="10sp"
             android:textStyle="bold"
             android:visibility="gone" />
 

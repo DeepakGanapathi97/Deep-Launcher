@@ -5,11 +5,20 @@
     <color name="bg_card">#16161a</color>
     <color name="bg_card_focused">#24242c</color>
     
-    <!-- Accent & Text -->
-    <color name="accent_focus_stroke">#ffffff</color>
+    <!-- Accent & Text (Dark) -->
+    <color name="accent_focus_stroke">#38bdf8</color>
     <color name="text_primary">#f5f5f7</color>
     <color name="text_secondary">#8a8a93</color>
     <color name="text_muted">#55555c</color>
+
+    <!-- Day / Daylight Clean White Theme -->
+    <color name="bg_light">#f3f4f8</color>
+    <color name="bg_card_light">#ffffff</color>
+    <color name="bg_card_focused_light">#e2e8f0</color>
+    <color name="accent_focus_stroke_light">#0284c7</color>
+    <color name="text_primary_light">#0f172a</color>
+    <color name="text_secondary_light">#64748b</color>
+    <color name="text_muted_light">#94a3b8</color>
     
     <!-- Badges -->
     <color name="badge_hdmi">#2d4059</color>

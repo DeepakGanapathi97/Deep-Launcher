@@ -39,11 +39,17 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.AppViewHolder> {
 
     private boolean isReordering = false;
     private int reorderingPosition = -1;
+    private boolean isDayMode = false;
 
     public AppAdapter(Context context, ReorderListener reorderListener) {
         this.context = context;
         this.packageManager = context.getPackageManager();
         this.reorderListener = reorderListener;
+    }
+
+    public void setDayMode(boolean dayMode) {
+        this.isDayMode = dayMode;
+        notifyDataSetChanged();
     }
 
     @Override
@@ -68,6 +74,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.AppViewHolder> {
     @Override
     public AppViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(context).inflate(R.layout.item_app, parent, false);
+        view.setNextFocusUpId(R.id.btnTheme);
         return new AppViewHolder(view);
     }
 
@@ -88,14 +95,24 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.AppViewHolder> {
             holder.txtAppName.setText(item.getLabel());
         }
 
+        int normalRes = isDayMode ? R.drawable.bg_card_normal_light : R.drawable.bg_card_normal;
+        int focusedRes = isDayMode ? R.drawable.bg_card_focused_light : R.drawable.bg_card_focused;
+
         boolean itemIsBeingMoved = isReordering && (reorderingPosition == position);
         if (itemIsBeingMoved) {
             holder.viewBorderHighlight.setBackgroundResource(R.drawable.bg_card_reordering);
             holder.badgeReorder.setVisibility(View.VISIBLE);
         } else {
-            holder.viewBorderHighlight.setBackgroundResource(R.drawable.bg_card_selector);
+            holder.viewBorderHighlight.setBackgroundResource(normalRes);
             holder.badgeReorder.setVisibility(View.GONE);
         }
+
+        holder.cardContainer.setCardBackgroundColor(
+                androidx.core.content.ContextCompat.getColor(context, isDayMode ? R.color.bg_card_light : R.color.bg_card)
+        );
+        holder.txtAppName.setTextColor(
+                androidx.core.content.ContextCompat.getColor(context, isDayMode ? R.color.text_primary_light : R.color.text_primary)
+        );
 
         // Hardware-accelerated focus animation with 3D Z-elevation (prevents clipping against neighbors)
         holder.itemView.setOnFocusChangeListener((v, hasFocus) -> {
@@ -112,9 +129,9 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.AppViewHolder> {
             if (isReordering && reorderingPosition == holder.getAdapterPosition()) {
                 holder.viewBorderHighlight.setBackgroundResource(R.drawable.bg_card_reordering);
             } else if (hasFocus) {
-                holder.viewBorderHighlight.setBackgroundResource(R.drawable.bg_card_focused);
+                holder.viewBorderHighlight.setBackgroundResource(focusedRes);
             } else {
-                holder.viewBorderHighlight.setBackgroundResource(R.drawable.bg_card_normal);
+                holder.viewBorderHighlight.setBackgroundResource(normalRes);
             }
         });
 
@@ -204,6 +221,14 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.AppViewHolder> {
             reorderListener.onReorderStateChanged(false);
         }
         saveAppOrder();
+        if (attachedRecyclerView != null && oldPos != -1) {
+            attachedRecyclerView.post(() -> {
+                RecyclerView.ViewHolder vh = attachedRecyclerView.findViewHolderForAdapterPosition(oldPos);
+                if (vh != null) {
+                    vh.itemView.requestFocus();
+                }
+            });
+        }
         Toast.makeText(context, "App order saved", Toast.LENGTH_SHORT).show();
     }
 
@@ -285,6 +310,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.AppViewHolder> {
     }
 
     static class AppViewHolder extends RecyclerView.ViewHolder {
+        final androidx.cardview.widget.CardView cardContainer;
         final ImageView imgBanner;
         final ImageView imgIcon;
         final TextView txtAppName;
@@ -294,6 +320,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.AppViewHolder> {
 
         AppViewHolder(@NonNull View itemView) {
             super(itemView);
+            cardContainer = itemView.findViewById(R.id.cardContainer);
             imgBanner = itemView.findViewById(R.id.imgBanner);
             imgIcon = itemView.findViewById(R.id.imgIcon);
             txtAppName = itemView.findViewById(R.id.txtAppName);

@@ -21,9 +21,15 @@ public class TvInputAdapter extends RecyclerView.Adapter<TvInputAdapter.InputVie
 
     private final Context context;
     private final List<TvInputItem> inputList = new ArrayList<>();
+    private boolean isDayMode = false;
 
     public TvInputAdapter(Context context) {
         this.context = context;
+    }
+
+    public void setDayMode(boolean dayMode) {
+        this.isDayMode = dayMode;
+        notifyDataSetChanged();
     }
 
     public void setInputs(List<TvInputItem> inputs) {
@@ -46,6 +52,17 @@ public class TvInputAdapter extends RecyclerView.Adapter<TvInputAdapter.InputVie
         TvInputItem item = inputList.get(position);
         holder.txtInputName.setText(item.getLabel());
 
+        int normalRes = isDayMode ? R.drawable.bg_card_normal_light : R.drawable.bg_card_normal;
+        int focusedRes = isDayMode ? R.drawable.bg_card_focused_light : R.drawable.bg_card_focused;
+
+        holder.cardInputContainer.setCardBackgroundColor(
+                androidx.core.content.ContextCompat.getColor(context, isDayMode ? R.color.bg_card_light : R.color.bg_card)
+        );
+        holder.txtInputName.setTextColor(
+                androidx.core.content.ContextCompat.getColor(context, isDayMode ? R.color.text_primary_light : R.color.text_primary)
+        );
+        holder.viewBorderHighlight.setBackgroundResource(normalRes);
+
         // TV D-pad focus scaling with 3D elevation
         holder.itemView.setOnFocusChangeListener((v, hasFocus) -> {
             float scale = hasFocus ? 1.08f : 1.0f;
@@ -58,9 +75,7 @@ public class TvInputAdapter extends RecyclerView.Adapter<TvInputAdapter.InputVie
                     .setInterpolator(new android.view.animation.DecelerateInterpolator())
                     .start();
 
-            holder.viewBorderHighlight.setBackgroundResource(
-                    hasFocus ? R.drawable.bg_card_focused : R.drawable.bg_card_normal
-            );
+            holder.viewBorderHighlight.setBackgroundResource(hasFocus ? focusedRes : normalRes);
         });
 
         // Switch to HDMI/AV Input
@@ -81,11 +96,13 @@ public class TvInputAdapter extends RecyclerView.Adapter<TvInputAdapter.InputVie
     }
 
     static class InputViewHolder extends RecyclerView.ViewHolder {
+        final androidx.cardview.widget.CardView cardInputContainer;
         final TextView txtInputName;
         final View viewBorderHighlight;
 
         InputViewHolder(@NonNull View itemView) {
             super(itemView);
+            cardInputContainer = itemView.findViewById(R.id.cardInputContainer);
             txtInputName = itemView.findViewById(R.id.txtInputName);
             viewBorderHighlight = itemView.findViewById(R.id.viewBorderHighlight);
         }

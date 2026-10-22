@@ -4,7 +4,7 @@
     android:id="@+id/cardInputRoot"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:layout_marginEnd="18dp"
+    android:layout_marginEnd="14dp"
     android:clipChildren="false"
     android:clipToPadding="false"
     android:clickable="true"
@@ -12,10 +12,10 @@
 
     <androidx.cardview.widget.CardView
         android:id="@+id/cardInputContainer"
-        android:layout_width="144dp"
-        android:layout_height="84dp"
+        android:layout_width="128dp"
+        android:layout_height="76dp"
         app:cardBackgroundColor="@color/bg_card"
-        app:cardCornerRadius="12dp"
+        app:cardCornerRadius="10dp"
         app:cardElevation="0dp">
 
         <LinearLayout
@@ -23,23 +23,23 @@
             android:layout_height="match_parent"
             android:gravity="center"
             android:orientation="vertical"
-            android:padding="8dp">
+            android:padding="6dp">
 
             <ImageView
                 android:id="@+id/imgInputIcon"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
                 android:src="@drawable/ic_hdmi" />
 
             <TextView
                 android:id="@+id/txtInputName"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
+                android:layout_marginTop="4dp"
                 android:ellipsize="end"
                 android:maxLines="1"
                 android:textColor="@color/text_primary"
-                android:textSize="12sp"
+                android:textSize="11sp"
                 android:textStyle="bold" />
         </LinearLayout>
 

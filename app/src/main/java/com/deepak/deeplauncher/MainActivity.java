@@ -42,15 +42,26 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import android.graphics.Color;
+import android.widget.ImageView;
+import com.deepak.deeplauncher.util.ThemeManager;
+
 public class MainActivity extends Activity implements PackageReceiver.PackageChangeListener {
 
+    private LinearLayout rootLayout;
     private RecyclerView recyclerApps;
     private RecyclerView recyclerInputs;
     private LinearLayout layoutInputsContainer;
+    private TextView tvLauncherTitle;
     private TextView tvClock;
     private TextView tvWeather;
     private TextView tvReorderHint;
+    private TextView headerApps;
+    private TextView headerInputs;
     private FrameLayout btnSettings;
+    private ImageView imgSettingsIcon;
+    private FrameLayout btnTheme;
+    private ImageView imgThemeIcon;
 
     private AppAdapter appAdapter;
     private TvInputAdapter tvInputAdapter;
@@ -63,6 +74,7 @@ public class MainActivity extends Activity implements PackageReceiver.PackageCha
         @Override
         public void onReceive(Context context, Intent intent) {
             updateClock();
+            applyTheme();
         }
     };
 
@@ -74,6 +86,7 @@ public class MainActivity extends Activity implements PackageReceiver.PackageCha
         initViews();
         setupRecyclerViews();
         updateClock();
+        applyTheme();
 
         loadAppsAndInputs();
 
@@ -81,21 +94,42 @@ public class MainActivity extends Activity implements PackageReceiver.PackageCha
     }
 
     private void initViews() {
+        rootLayout = findViewById(R.id.rootLayout);
         recyclerApps = findViewById(R.id.recyclerApps);
         recyclerInputs = findViewById(R.id.recyclerInputs);
         layoutInputsContainer = findViewById(R.id.layoutInputsContainer);
+        tvLauncherTitle = findViewById(R.id.tvLauncherTitle);
         tvClock = findViewById(R.id.tvClock);
         tvWeather = findViewById(R.id.tvWeather);
         tvReorderHint = findViewById(R.id.tvReorderHint);
+        headerApps = findViewById(R.id.headerApps);
+        headerInputs = findViewById(R.id.headerInputs);
         btnSettings = findViewById(R.id.btnSettings);
+        imgSettingsIcon = findViewById(R.id.imgSettingsIcon);
+        btnTheme = findViewById(R.id.btnTheme);
+        imgThemeIcon = findViewById(R.id.imgThemeIcon);
 
         weatherHelper = new WeatherHelper(this);
+
+        tvLauncherTitle.setFocusable(false);
+        tvLauncherTitle.setClickable(false);
+
+        btnTheme.setOnFocusChangeListener((v, hasFocus) -> {
+            float scale = hasFocus ? 1.15f : 1.0f;
+            float elev = hasFocus ? 16f : 0f;
+            v.animate().scaleX(scale).scaleY(scale).translationZ(elev).setDuration(120).start();
+        });
+        btnTheme.setOnClickListener(v -> toggleTheme());
+        btnTheme.setNextFocusRightId(R.id.btnSettings);
+        btnTheme.setNextFocusDownId(R.id.recyclerApps);
 
         btnSettings.setOnFocusChangeListener((v, hasFocus) -> {
             float scale = hasFocus ? 1.15f : 1.0f;
             float elev = hasFocus ? 16f : 0f;
             v.animate().scaleX(scale).scaleY(scale).translationZ(elev).setDuration(120).start();
         });
+        btnSettings.setNextFocusLeftId(R.id.btnTheme);
+        btnSettings.setNextFocusDownId(R.id.recyclerApps);
 
         btnSettings.setOnClickListener(v -> {
             try {
@@ -106,6 +140,69 @@ public class MainActivity extends Activity implements PackageReceiver.PackageCha
                 Toast.makeText(this, "Cannot open Settings: " + e.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void applyTheme() {
+        boolean isDay = ThemeManager.isDayMode(this);
+        int mode = ThemeManager.getThemeMode(this);
+
+        // Update Theme button icon according to mode
+        if (imgThemeIcon != null) {
+            if (mode == ThemeManager.MODE_AUTO) {
+                imgThemeIcon.setImageResource(R.drawable.ic_theme_auto);
+            } else if (mode == ThemeManager.MODE_DAY) {
+                imgThemeIcon.setImageResource(R.drawable.ic_theme_day);
+            } else {
+                imgThemeIcon.setImageResource(R.drawable.ic_theme_night);
+            }
+        }
+
+        if (isDay) {
+            rootLayout.setBackgroundColor(Color.parseColor("#F3F4F8"));
+            tvLauncherTitle.setTextColor(Color.parseColor("#0F172A"));
+            tvClock.setTextColor(Color.parseColor("#0F172A"));
+            tvWeather.setTextColor(Color.parseColor("#475569"));
+            headerApps.setTextColor(Color.parseColor("#64748B"));
+            headerInputs.setTextColor(Color.parseColor("#64748B"));
+            btnSettings.setBackgroundResource(R.drawable.bg_button_settings_light);
+            btnTheme.setBackgroundResource(R.drawable.bg_button_settings_light);
+            if (imgSettingsIcon != null) {
+                imgSettingsIcon.setColorFilter(Color.parseColor("#0F172A"));
+            }
+            if (imgThemeIcon != null) {
+                imgThemeIcon.setColorFilter(Color.parseColor("#0F172A"));
+            }
+        } else {
+            rootLayout.setBackgroundColor(Color.parseColor("#0A0A0C"));
+            tvLauncherTitle.setTextColor(Color.parseColor("#F8FAFC"));
+            tvClock.setTextColor(Color.parseColor("#F8FAFC"));
+            tvWeather.setTextColor(Color.parseColor("#94A3B8"));
+            headerApps.setTextColor(Color.parseColor("#94A3B8"));
+            headerInputs.setTextColor(Color.parseColor("#94A3B8"));
+            btnSettings.setBackgroundResource(R.drawable.bg_button_settings);
+            btnTheme.setBackgroundResource(R.drawable.bg_button_settings);
+            if (imgSettingsIcon != null) {
+                imgSettingsIcon.setColorFilter(Color.parseColor("#FFFFFF"));
+            }
+            if (imgThemeIcon != null) {
+                imgThemeIcon.setColorFilter(Color.parseColor("#FFFFFF"));
+            }
+        }
+
+        if (appAdapter != null) {
+            appAdapter.setDayMode(isDay);
+        }
+        if (tvInputAdapter != null) {
+            tvInputAdapter.setDayMode(isDay);
+        }
+    }
+
+    private void toggleTheme() {
+        int nextMode = ThemeManager.toggleNextMode(this);
+        applyTheme();
+        String modeName = (nextMode == ThemeManager.MODE_AUTO) ? "Auto (Time-based Daylight/Night)"
+                : (nextMode == ThemeManager.MODE_DAY) ? "Daylight White" : "OLED Pure Dark";
+        Toast.makeText(this, "Theme: " + modeName, Toast.LENGTH_SHORT).show();
     }
 
     private void setupRecyclerViews() {
@@ -134,6 +231,7 @@ public class MainActivity extends Activity implements PackageReceiver.PackageCha
         super.onResume();
         registerReceiver(timeTickReceiver, new IntentFilter(Intent.ACTION_TIME_TICK));
         updateClock();
+        applyTheme();
         loadAppsAndInputs();
 
         if (weatherHelper != null && tvWeather != null) {
